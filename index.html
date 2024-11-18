@@ -3,13 +3,41 @@
 <head>
     <title>Asset Chart</title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .chart-container {
+            width: 80%;
+            margin: auto;
+        }
+        .button-container {
+            text-align: center;
+            margin: 20px 0;
+        }
+        .toggle-button {
+            padding: 10px 20px;
+            margin: 0 10px;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            background-color: #eee;
+        }
+        .toggle-button.active {
+            background-color: rgb(75, 192, 192);
+            color: white;
+        }
+    </style>
 </head>
 <body>
-    <div style="width: 80%; margin: auto;">
+    <div class="button-container">
+        <button class="toggle-button active" data-type="1">24 Hours</button>
+        <button class="toggle-button" data-type="2">7 Days</button>
+    </div>
+    <div class="chart-container">
         <canvas id="assetChart"></canvas>
     </div>
     <script>
-        async function fetchData() {
+        let currentChartType = 1;
+
+        async function fetchData(chartTypeId) {
             try {
                 const response = await fetch('https://www.okx.com/priapi/v2/wallet/asset/profile/chart?t=' + Date.now(), {
                     method: 'POST',
@@ -21,7 +49,7 @@
                     },
                     body: JSON.stringify({
                         "accountIds": ["20F58A10-1570-401F-841F-4C894DDE1724"],
-                        "chartTypeId": 1
+                        "chartTypeId": chartTypeId
                     })
                 });
                 
@@ -37,8 +65,8 @@
             return new Date(timestamp).toLocaleString();
         }
 
-        async function updateChart() {
-            const chartData = await fetchData();
+        async function updateChart(chartTypeId) {
+            const chartData = await fetchData(chartTypeId);
             
             const ctx = document.getElementById('assetChart').getContext('2d');
             
@@ -67,18 +95,35 @@
                     plugins: {
                         title: {
                             display: true,
-                            text: 'Asset Value Over Time'
+                            text: chartTypeId === 1 ? '24-Hour Asset Value' : '7-Day Asset Value'
                         }
                     }
                 }
             });
         }
 
-        // Initial update
-        updateChart();
+        // Add click event listeners to buttons
+        document.querySelectorAll('.toggle-button').forEach(button => {
+            button.addEventListener('click', async (e) => {
+                const chartTypeId = parseInt(e.target.dataset.type);
+                currentChartType = chartTypeId;
+                
+                // Update active button state
+                document.querySelectorAll('.toggle-button').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                e.target.classList.add('active');
+                
+                // Update chart
+                await updateChart(chartTypeId);
+            });
+        });
 
-        // Update every hour
-        setInterval(updateChart, 3600000);
+        // Initial update
+        updateChart(currentChartType);
+
+        // Update every hour with current chart type
+        setInterval(() => updateChart(currentChartType), 3600000);
     </script>
 </body>
 </html>
